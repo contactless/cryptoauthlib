@@ -77,7 +77,10 @@ ATCA_STATUS atinit(ATCAIface ca_iface)
     ATCA_STATUS status = ATCA_COMM_FAIL;
     ATCAHAL_t hal;
 
-    _atinit(ca_iface, &hal);
+    status = _atinit(ca_iface, &hal);
+    if (status != ATCA_SUCCESS) {
+        return status;
+    }
 
     status = ca_iface->atinit(&hal, ca_iface->mIfaceCFG);
     if (status == ATCA_SUCCESS)
@@ -189,8 +192,13 @@ void deleteATCAIface(ATCAIface *ca_iface) // destructor
 
 ATCA_STATUS _atinit(ATCAIface ca_iface, ATCAHAL_t *hal)
 {
+    ATCA_STATUS status;
+    status = hal_iface_init(ca_iface->mIfaceCFG, hal);
+    if (status != ATCA_SUCCESS) {
+        return status;
+    }
+
     // get method mapping to HAL methods for this interface
-    hal_iface_init(ca_iface->mIfaceCFG, hal);
     ca_iface->atinit     = hal->halinit;
     ca_iface->atpostinit = hal->halpostinit;
     ca_iface->atsend     = hal->halsend;
