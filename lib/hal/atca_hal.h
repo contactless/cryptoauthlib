@@ -159,6 +159,12 @@ void atca_delay_us(uint32_t delay);
 void atca_delay_10us(uint32_t delay);
 void atca_delay_ms(uint32_t delay);
 
+/* Mutex Abstraction */
+ATCA_STATUS hal_os_create_mutex(void** ppMutex, const char* name);
+ATCA_STATUS hal_os_destroy_mutex(void* pMutex);
+ATCA_STATUS hal_os_lock_mutex(void* pMutex);
+ATCA_STATUS hal_os_unlock_mutex(void* pMutex);
+
 #ifdef __cplusplus
 }
 #endif
