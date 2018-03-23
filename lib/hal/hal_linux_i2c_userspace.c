@@ -396,14 +396,15 @@ ATCA_STATUS hal_i2c_sleep(ATCAIface iface)
 ATCA_STATUS hal_i2c_release(void *hal_data)
 {
     ATCAI2CMaster_t *hal = (ATCAI2CMaster_t*)hal_data;
+    int bus = hal->bus_index;
 
     i2c_bus_ref_ct--;   // track total i2c bus interface instances for consistency checking and debugging
 
     // if the use count for this bus has gone to 0 references, disable it.  protect against an unbracketed release
     if (hal && --(hal->ref_ct) <= 0 && i2c_hal_data[hal->bus_index] != NULL)
     {
-        free(i2c_hal_data[hal->bus_index]);
-        i2c_hal_data[hal->bus_index] = NULL;
+        free(i2c_hal_data[bus]);
+        i2c_hal_data[bus] = NULL;
     }
 
     return ATCA_SUCCESS;
