@@ -158,7 +158,7 @@ void atca_delay_10us(uint32_t delay);
 void atca_delay_ms(uint32_t delay);
 
 /** \brief Optional hal interfaces */
-ATCA_STATUS hal_create_mutex(void ** ppMutex, char* pName);
+ATCA_STATUS hal_create_mutex(void ** ppMutex, const char* pName);
 ATCA_STATUS hal_destroy_mutex(void * pMutex);
 ATCA_STATUS hal_lock_mutex(void * pMutex);
 ATCA_STATUS hal_unlock_mutex(void * pMutex);
@@ -167,6 +167,7 @@ ATCA_STATUS hal_unlock_mutex(void * pMutex);
 #ifdef ATCA_USE_RTOS_TIMER
 void atca_delay_ms_internal(uint32_t delay);
 #endif
+
 
 #ifdef __cplusplus
 }
