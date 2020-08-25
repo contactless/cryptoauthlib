@@ -120,51 +120,41 @@ ATCA_STATUS linux_i2c_probe_device(ATCAIfaceCfg *cfg, ATCADevice device)
     // If it wakes, send it a dev rev command.  Based on that response, determine the device type
     // BTW - this will wake every cryptoauth device living on the same bus (ecc508a, sha204a)
 
-    if (hal_i2c_wake(discoverIface) == ATCA_SUCCESS)
+    if ( (status = hal_i2c_wake(discoverIface)) == ATCA_SUCCESS)
     {
         memset(&packet, 0x00, sizeof(packet));
 
         // get devrev info and set device type accordingly
         atInfo(command, &packet);
 
-        if ( (status = atGetExecTime(packet.opcode, command)) != ATCA_SUCCESS)
+        if ( (status = atGetExecTime(packet.opcode, command)) == ATCA_SUCCESS)
         {
-            return status;
-        }
-
-        // send the command
-        if ( (status = atsend(discoverIface, (uint8_t*)&packet, packet.txsize)) != ATCA_SUCCESS)
-        {
-            return status;
-        }
-
-        // delay the appropriate amount of time for command to execute
-        atca_delay_ms((command->execution_time_msec) + 1);
-
-        // receive the response
-        if ( (status = atreceive(discoverIface, &(packet.data[0]), &(packet.rxsize) )) != ATCA_SUCCESS)
-        {
-            return status;
-        }
-
-        if ( (status = isATCAError(packet.data)) != ATCA_SUCCESS)
-        {
-            return status;
-        }
-
-        cfg->devtype = ATCA_DEV_UNKNOWN;
-
-        // determine device type from common info and dev rev response byte strings
-        for (int i = 0; i < (int)sizeof(signatures) / sizeof(ATCADeviceSignature); i++)
-        {
-            if (memcmp(&packet.data[1], &signatures[i].pattern, sizeof(signatures[i].pattern)) == 0)
+            if ( (status = atsend(discoverIface, (uint8_t*)&packet, packet.txsize)) == ATCA_SUCCESS)
             {
-                cfg->devtype = signatures[i].devtype;
-                return ATCA_SUCCESS;
+                // delay the appropriate amount of time for command to execute
+                atca_delay_ms((command->execution_time_msec) + 1);
+                if ( (status = atreceive(discoverIface, &(packet.data[0]), &(packet.rxsize) )) == ATCA_SUCCESS)
+                {
+                    if ( (status = isATCAError(packet.data)) == ATCA_SUCCESS)
+                    {
+                        cfg->devtype = ATCA_DEV_UNKNOWN;
+                        // determine device type from common info and dev rev response byte strings
+                        for (int i = 0; i < (int)sizeof(signatures) / sizeof(ATCADeviceSignature); i++)
+                        {
+                            if (memcmp(&packet.data[1], &signatures[i].pattern, sizeof(signatures[i].pattern)) == 0)
+                            {
+                                cfg->devtype = signatures[i].devtype;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-    return ATCA_GEN_FAIL;
+    hal_i2c_idle(discoverIface);
+    atca_delay_ms(15);
+    return status;
 }
 
 /** \brief try to find CryptoAuth device type
@@ -236,11 +226,9 @@ ATCA_STATUS hal_i2c_discover_devices(int busNum, ATCAIfaceCfg cfg[], int *found)
         discoverCfg.atcai2c.slave_address = slaveAddress << 1;  // turn it into an 8-bit address which is what the rest of the i2c HAL is expecting when a packet is sent
         if (linux_i2c_probe_device(&discoverCfg, device) == ATCA_SUCCESS) {
             memcpy( (uint8_t*)head, (uint8_t*)&discoverCfg, sizeof(ATCAIfaceCfg));
-            atca_delay_ms(15);
             head++;
             (*found)++;
         }
-        hal_i2c_idle(discoverIface);
     }
     deleteATCADevice(&device);
     hal_i2c_release(hal.hal_data);
