@@ -85,16 +85,6 @@ ATCA_STATUS hal_i2c_discover_buses(int i2c_buses[], int max_buses)
     return ATCA_SUCCESS;
 }
 
-/** \brief try to find CryptoAuth device type.This function is currently not implemented.
- * \param[in,out] cfg - pointer to interface config structure with assigned bus number and slave address.
- *                      Upon success the function sets devtype value of the structure.
- * \return ATCA_UNIMPLEMENTED
- */
-ATCA_STATUS hal_i2c_discover_device_type(ATCAIfaceCfg *cfg)
-{
-    return ATCA_UNIMPLEMENTED;
-}
-
 /** \brief discover any CryptoAuth devices on a given logical bus number
  * \param[in]  busNum  logical bus number on which to look for CryptoAuth devices
  * \param[out] cfg     pointer to head of an array of interface config structures which get filled in by this method

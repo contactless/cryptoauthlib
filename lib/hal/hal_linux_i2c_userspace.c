@@ -32,6 +32,7 @@
 #include "atca_hal.h"
 #include "hal_linux_i2c_userspace.h"
 #include "atca_device.h"
+#include "atca_basic.h"
 
 #include <linux/i2c-dev.h>
 #include <unistd.h>
@@ -45,12 +46,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
-
-typedef struct 
-{
-    ATCADeviceType devtype;
-    uint8_t pattern[4];
-} ATCADeviceSignature;
 
 /** \defgroup hal_ Hardware abstraction layer (hal_)
  *
@@ -95,144 +90,16 @@ ATCA_STATUS hal_i2c_discover_buses(int i2c_buses[], int max_buses)
     return ATCA_SUCCESS;
 }
 
-
-ATCA_STATUS linux_i2c_probe_device(ATCAIfaceCfg *cfg, ATCADevice device)
-{
-    ATCAIface discoverIface;
-    ATCACommand command;
-    ATCAPacket packet;
-    ATCA_STATUS status;
-
-    const ATCADeviceSignature signatures[] = {
-        { ATECC608A, { 0x00, 0x00, 0x60, 0x01 } },
-        { ATECC608A, { 0x00, 0x00, 0x60, 0x02 } },
-        { ATECC508A, { 0x00, 0x00, 0x50, 0x00 } },
-        { ATECC108A, { 0x80, 0x00, 0x10, 0x01 } },
-        { ATSHA204A, { 0x00, 0x02, 0x00, 0x08 } },
-        { ATSHA204A, { 0x00, 0x02, 0x00, 0x09 } },
-        { ATSHA204A, { 0x00, 0x04, 0x05, 0x00 } }
-    };
-
-    discoverIface = atGetIFace(device);
-    command = atGetCommands(device);
-
-    // wake up device
-    // If it wakes, send it a dev rev command.  Based on that response, determine the device type
-    // BTW - this will wake every cryptoauth device living on the same bus (ecc508a, sha204a)
-
-    if ( (status = hal_i2c_wake(discoverIface)) == ATCA_SUCCESS)
-    {
-        memset(&packet, 0x00, sizeof(packet));
-
-        // get devrev info and set device type accordingly
-        atInfo(command, &packet);
-
-        if ( (status = atGetExecTime(packet.opcode, command)) == ATCA_SUCCESS)
-        {
-            if ( (status = atsend(discoverIface, (uint8_t*)&packet, packet.txsize)) == ATCA_SUCCESS)
-            {
-                // delay the appropriate amount of time for command to execute
-                atca_delay_ms((command->execution_time_msec) + 1);
-                if ( (status = atreceive(discoverIface, &(packet.data[0]), &(packet.rxsize) )) == ATCA_SUCCESS)
-                {
-                    if ( (status = isATCAError(packet.data)) == ATCA_SUCCESS)
-                    {
-                        cfg->devtype = ATCA_DEV_UNKNOWN;
-                        // determine device type from common info and dev rev response byte strings
-                        for (int i = 0; i < (int)sizeof(signatures) / sizeof(ATCADeviceSignature); i++)
-                        {
-                            if (memcmp(&packet.data[1], &signatures[i].pattern, sizeof(signatures[i].pattern)) == 0)
-                            {
-                                cfg->devtype = signatures[i].devtype;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    hal_i2c_idle(discoverIface);
-    atca_delay_ms(15);
-    return status;
-}
-
-/** \brief try to find CryptoAuth device type
- * \param[in,out] cfg - pointer to interface config structure with assigned bus number and slave address.
- *                      Upon success the function sets devtype value of the structure.
- * \return ATCA_SUCCESS on success, otherwise an error code.
- */
-ATCA_STATUS hal_i2c_discover_device_type(ATCAIfaceCfg *cfg)
-{
-    ATCADevice device;
-    ATCA_STATUS status;
-
-    /** \brief default configuration, to be reused during discovery process */
-    ATCAIfaceCfg discoverCfg = {
-        .iface_type             = ATCA_I2C_IFACE,
-        .devtype                = ATECC608A, // Use ATECC608A as it has longest execution time of INFO command
-        .atcai2c.slave_address  = cfg->atcai2c.slave_address,
-        .atcai2c.bus            = cfg->atcai2c.bus,
-        .atcai2c.baud           = cfg->atcai2c.baud,
-        .wake_delay             = 800,
-        .rx_retries             = 3
-    };
-
-    ATCAHAL_t hal;
-    memset(&hal, 0, sizeof(hal));
-    hal_i2c_init(&hal, &discoverCfg);
-    device = newATCADevice(&discoverCfg);
-    status = linux_i2c_probe_device(cfg, device);
-    deleteATCADevice(&device);
-    hal_i2c_release(hal.hal_data);
-    return status;
-}
-
-/** \brief discover any CryptoAuth devices on a given logical bus number
+/** \brief discover any CryptoAuth devices on a given logical bus number. This function is currently not implemented.
  * \param[in]  busNum  logical bus number on which to look for CryptoAuth devices
  * \param[out] cfg     pointer to head of an array of interface config structures which get filled in by this method
  * \param[out] found   number of devices found on this bus
- * \return ATCA_SUCCESS on success, otherwise an error code.
+ * \return ATCA_UNIMPLEMENTED
  */
 
 ATCA_STATUS hal_i2c_discover_devices(int busNum, ATCAIfaceCfg cfg[], int *found)
 {
-    ATCAIfaceCfg *head = cfg;
-    ATCADevice device;
-    ATCAIface discoverIface;
-
-    /** \brief default configuration, to be reused during discovery process */
-    ATCAIfaceCfg discoverCfg = {
-        .iface_type             = ATCA_I2C_IFACE,
-        .devtype                = ATECC608A, // Use ATECC608A as it has longest execution time of INFO command
-        .atcai2c.slave_address  = 0x08,
-        .atcai2c.bus            = busNum,
-        .atcai2c.baud           = 400000,
-        //.atcai2c.baud = 100000,
-        .wake_delay             = 800,
-        .rx_retries             = 3
-    };
-
-    ATCAHAL_t hal;
-    memset(&hal, 0, sizeof(hal));
-    hal_i2c_init(&hal, &discoverCfg);
-    device = newATCADevice(&discoverCfg);
-    discoverIface = atGetIFace(device);
-
-    // iterate through all addresses on given i2c bus
-    // all valid 7-bit addresses go from 0x08 to 0x77
-    for (uint8_t slaveAddress = 0x08; slaveAddress <= 0x77; slaveAddress++)
-    {
-        discoverCfg.atcai2c.slave_address = slaveAddress << 1;  // turn it into an 8-bit address which is what the rest of the i2c HAL is expecting when a packet is sent
-        if (linux_i2c_probe_device(&discoverCfg, device) == ATCA_SUCCESS) {
-            memcpy( (uint8_t*)head, (uint8_t*)&discoverCfg, sizeof(ATCAIfaceCfg));
-            head++;
-            (*found)++;
-        }
-    }
-    deleteATCADevice(&device);
-    hal_i2c_release(hal.hal_data);
-    return ATCA_SUCCESS;
+    return ATCA_UNIMPLEMENTED;
 }
 
 /** \brief HAL implementation of I2C init
