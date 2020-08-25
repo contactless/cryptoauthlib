@@ -99,6 +99,7 @@ ATCA_STATUS hal_i2c_idle(ATCAIface iface);
 ATCA_STATUS hal_i2c_sleep(ATCAIface iface);
 ATCA_STATUS hal_i2c_release(void *hal_data);
 ATCA_STATUS hal_i2c_discover_buses(int i2c_buses[], int max_buses);
+ATCA_STATUS hal_i2c_discover_device_type(ATCAIfaceCfg *cfg);
 ATCA_STATUS hal_i2c_discover_devices(int bus_num, ATCAIfaceCfg *cfg, int *found);
 #endif
 

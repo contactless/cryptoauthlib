@@ -175,6 +175,15 @@ ATCA_STATUS atcab_sleep(void)
     return atsleep(_gDevice->mIface);
 }
 
+ATCA_STATUS atcab_discover_device_type(ATCAIfaceCfg* cfg)
+{
+#ifdef ATCA_HAL_I2C
+    if ( ATCA_I2C_IFACE == cfg->iface_type) {
+        return hal_i2c_discover_device_type(cfg);
+    }
+#endif
+    return ATCA_GEN_FAIL;
+}
 
 /** \brief auto discovery of crypto auth devices
  *
