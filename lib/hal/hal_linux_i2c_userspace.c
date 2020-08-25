@@ -31,8 +31,6 @@
 
 #include "atca_hal.h"
 #include "hal_linux_i2c_userspace.h"
-#include "atca_device.h"
-#include "atca_basic.h"
 
 #include <linux/i2c-dev.h>
 #include <unistd.h>
@@ -45,7 +43,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <dirent.h>
+
 
 /** \defgroup hal_ Hardware abstraction layer (hal_)
  *
@@ -63,34 +61,15 @@ int i2c_bus_ref_ct = 0;                       // total in-use count across buses
  * of the a-priori knowledge.This function is not implemented.
  * \param[in] i2c_buses - an array of logical bus numbers
  * \param[in] max_buses - maximum number of buses the app wants to attempt to discover
- * \return ATCA_SUCCESS on success, otherwise an error code.
+ * \return ATCA_UNIMPLEMENTED
  */
 
 ATCA_STATUS hal_i2c_discover_buses(int i2c_buses[], int max_buses)
 {
-    DIR *dir = opendir("/dev");
-    struct dirent *ent;
-    int found = 0;
-
-    if (dir == NULL)
-    {
-        return ATCA_GEN_FAIL;
-    }
-
-    while ((found < max_buses) && ((ent = readdir(dir)) != NULL))
-    {
-        if (memcmp(ent->d_name, "i2c-", 4) != 0)
-        {
-            continue;
-        }
-        i2c_buses[found] = atoi(ent->d_name+4);
-        ++found;
-    }
-    closedir(dir);
-    return ATCA_SUCCESS;
+    return ATCA_UNIMPLEMENTED;
 }
 
-/** \brief discover any CryptoAuth devices on a given logical bus number. This function is currently not implemented.
+/** \brief discover any CryptoAuth devices on a given logical bus number
  * \param[in]  busNum  logical bus number on which to look for CryptoAuth devices
  * \param[out] cfg     pointer to head of an array of interface config structures which get filled in by this method
  * \param[out] found   number of devices found on this bus
@@ -119,6 +98,7 @@ ATCA_STATUS hal_i2c_init(void* hal, ATCAIfaceCfg* cfg)
     uint8_t i;
 
     if (i2c_bus_ref_ct == 0)    // power up state, no i2c buses will have been used
+
     {
         for (i = 0; i < MAX_I2C_BUSES; i++)
         {
@@ -397,14 +377,13 @@ ATCA_STATUS hal_i2c_sleep(ATCAIface iface)
 ATCA_STATUS hal_i2c_release(void *hal_data)
 {
     ATCAI2CMaster_t *hal = (ATCAI2CMaster_t*)hal_data;
-    int bus;
+    int bus = hal->bus_index;
 
     i2c_bus_ref_ct--;   // track total i2c bus interface instances for consistency checking and debugging
 
     // if the use count for this bus has gone to 0 references, disable it.  protect against an unbracketed release
     if (hal && --(hal->ref_ct) <= 0 && i2c_hal_data[hal->bus_index] != NULL)
     {
-        bus = hal->bus_index;
         free(i2c_hal_data[bus]);
         i2c_hal_data[bus] = NULL;
     }
