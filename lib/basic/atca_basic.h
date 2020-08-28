@@ -133,6 +133,7 @@ ATCA_STATUS atcab_info_base(uint8_t mode, uint16_t param2, uint8_t* out_data);
 ATCA_STATUS atcab_info(uint8_t* revision);
 ATCA_STATUS atcab_info_set_latch(bool state);
 ATCA_STATUS atcab_info_get_latch(bool* state);
+ATCADeviceType atcab_device_type(uint8_t* revision);
 
 // KDF command functions
 ATCA_STATUS atcab_kdf(uint8_t mode, uint16_t key_id, const uint32_t details, const uint8_t* message, uint8_t* out_data, uint8_t* out_nonce);

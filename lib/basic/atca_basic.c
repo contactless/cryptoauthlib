@@ -38,6 +38,12 @@ char atca_version[] = { "20180115" };  // change for each release, yyyymmdd
 ATCADevice _gDevice = NULL;
 #define MAX_BUSES   4
 
+typedef struct 
+{
+    ATCADeviceType devtype;
+    uint8_t pattern[4];
+} ATCADeviceSignature;
+
 /** \brief basic API methods are all prefixed with atcab_  (Atmel CryptoAuth Basic)
  *  the fundamental premise of the basic API is it is based on a single interface
  *  instance and that instance is global, so all basic API commands assume that
@@ -174,7 +180,6 @@ ATCA_STATUS atcab_sleep(void)
 
     return atsleep(_gDevice->mIface);
 }
-
 
 /** \brief auto discovery of crypto auth devices
  *
@@ -449,4 +454,26 @@ ATCA_STATUS atcab_execute_command(ATCAPacket* packet)
 
     _atcab_exit();
     return status;
+}
+
+ATCADeviceType atcab_device_type(uint8_t* revision)
+{
+    const ATCADeviceSignature signatures[] = {
+        { ATECC608A, { 0x00, 0x00, 0x60, 0x01 } },
+        { ATECC608A, { 0x00, 0x00, 0x60, 0x02 } },
+        { ATECC508A, { 0x00, 0x00, 0x50, 0x00 } },
+        { ATECC108A, { 0x80, 0x00, 0x10, 0x01 } },
+        { ATSHA204A, { 0x00, 0x02, 0x00, 0x08 } },
+        { ATSHA204A, { 0x00, 0x02, 0x00, 0x09 } },
+        { ATSHA204A, { 0x00, 0x04, 0x05, 0x00 } }
+    };
+
+    for (int i = 0; i < (int)sizeof(signatures) / sizeof(ATCADeviceSignature); i++)
+    {
+        if (memcmp(revision, &signatures[i].pattern, sizeof(signatures[i].pattern)) == 0)
+        {
+            return signatures[i].devtype;
+        }
+    }
+    return ATCA_DEV_UNKNOWN;
 }
